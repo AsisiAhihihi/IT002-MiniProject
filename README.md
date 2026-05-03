@@ -1,4 +1,4 @@
-# Mô phỏng và phân tích chiến lược Baccarat bằng C++
+# Mô phỏng Baccarat 
 
 ## Giới thiệu
 
