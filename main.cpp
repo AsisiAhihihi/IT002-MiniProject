@@ -1,178 +1,97 @@
+#include <iomanip>
 #include <iostream>
 #include <vector>
-#include <string>
-#include <algorithm> // Cho shuffle
-#include <random>    // Cho random_device và mt19937
-#include <vector>    // Cho biến cards (vector)
+
+#include "Common.h"
+#include "GamePlay.h"
+#include "Strategy.h"
+#include "ThongKe.h"
 
 using namespace std;
 
-class Card{
-private:
-    int Rank;
-    int suit;
-public:
+int main() {
+    const int SO_BO_BAI = 8;
+    const int GIOI_HAN_TRON_LAI = 50;
+    const double DON_VI_CUOC = 1.0;
 
-    Card(){}
+    int soVan;
+    cout << "Nhap so van mo phong: ";
+    cin >> soVan;
 
-    Card(int r, int s): Rank(r),suit(s){};
-
-    int GetValue(){
-        if(Rank >= 10) return 0;
-        return Rank;
-    }
-};
-
-class Shoe{
-private:
-    vector<Card> cards;
-public:
-
-    Shoe(int num){
-        //tương úng vị trí từ lá A - K
-        int Rank[] = {1,2,3,4,5,6,7,8,9,10,11,12,13};
-
-        // 1: lá bích 2: lá chuồng 3: lá rô 4: lá cơ
-        int suit[] = {1,2,3,4};
-
-        for(int i = 0; i < num; i++){
-            for(auto &r : Rank){
-                for(auto &s : suit){
-                    cards.push_back(Card(r,s));
-                }
-            }
-        }
-        Shuffle();
+    if (soVan <= 0) {
+        cout << "So van khong hop le!" << endl;
+        return 0;
     }
 
-    void Shuffle(){
-        random_device rd;
-        mt19937 g(rd());
-        shuffle(cards.begin(), cards.end(), g);
-    }
+    Shoe shoe(SO_BO_BAI);
+    GamePlay game(&shoe);
 
-    Card draw(){
-        Card c;
-        c = cards.back();
-        cards.pop_back();
-        return c;
-    }
+    vector<KetQua> danhSachKetQua;
+    danhSachKetQua.reserve(soVan);
 
-    int getremaincards(){
-        return cards.size();
-    }
-};
+    long long playerThang = 0;
+    long long bankerThang = 0;
+    long long hoa = 0;
 
-class Hand{
-public:
-    vector<Card> cards;
-
-    void addcard(const Card &c){
-        cards.push_back(c);
-    }
-
-    int totalpoint(){
-        int sum = 0;
-        for(auto &c : cards){
-            sum += c.GetValue();
-        }
-        return sum%10;
-    }
-
-    void clear(){
-        cards.clear();
-    }
-};
-
-class GamePlay{
-private:
-    Shoe* shoe;
-
-
-    //Hàm kiểm tra xem player hay banker thắng: quy ước 1: Player; 2:Tie; 3: Banker;
-    int winner(int Pscore, int Bscore){
-        if(Pscore > Bscore) return 1;
-        if(Bscore > Pscore) return 3;
-        return 2;
-    }
-
-    bool thirdcard(int Bscore, int Pthirdcard){
-        if(Pthirdcard == -1) return Bscore <=5;
-        if(Bscore <= 2) return true;
-        if(Bscore == 3) return Pthirdcard !=8;
-        if(Bscore == 4) return Pthirdcard >=2 && Pthirdcard <=7;
-        if(Bscore == 5) return Pthirdcard >=4 && Pthirdcard <=7;
-        if(Bscore == 6) return Pthirdcard ==6 || Pthirdcard == 7;
-        return false;
-    }
-public:
-
-    GamePlay(Shoe* s): shoe(s){}
-
-    int play(){
-        Hand Banker, Player;
-
-        for(int i = 0; i < 2; i++){
-            Player.addcard(shoe->draw());
-            Banker.addcard(shoe->draw());
+    for (int i = 0; i < soVan; i++) {
+        if (shoe.soLaConLai() < GIOI_HAN_TRON_LAI) {
+            shoe.taoMoi(SO_BO_BAI);
         }
 
-        int Pscore = Player.totalpoint();
-        int Bscore = Banker.totalpoint();
+        KetQua kq = game.choiMotVan();
+        danhSachKetQua.push_back(kq);
 
-        if(Pscore >= 8 || Bscore >= 8){
-            return winner(Pscore,Bscore);
-        }
-
-        int Pthirdcard = -1;
-
-        if(Pscore <= 5){
-            Card thirdcard = shoe->draw();
-            Player.addcard(thirdcard);
-            Pthirdcard = thirdcard.GetValue();
-            Pscore = Player.totalpoint();
-        }
-
-        if(thirdcard(Bscore,Pthirdcard)){
-            Banker.addcard(shoe->draw());
-            Bscore = Banker.totalpoint();
-        }
-        Player.clear();
-        Banker.clear();
-        return winner(Pscore,Bscore);
-    }
-};
-
-int main()
-{
-    int player =0;
-    int tie = 0;
-    int banker = 0;
-
-    Shoe shoe(8);
-    for(int i =0; i < 1000000; i ++){
-        if(shoe.getremaincards() <50){
-            shoe = Shoe(8);
-        }
-
-        GamePlay game(&shoe);
-        int results = game.play();
-        switch(results){
-            case 1: player++;
-                    break;
-            case 2: tie++;
-                    break;
-            case 3: banker++;
-                    break;
-            default: break;
-        }
+        if (kq == PLAYER_THANG) playerThang++;
+        else if (kq == BANKER_THANG) bankerThang++;
+        else hoa++;
     }
 
-    int totalGames = player + tie + banker;
-    cout << "Tong so van choi: " << totalGames << endl;
-    cout << "Player thang: " << (player * 100.0 / totalGames) << "%" << endl;
-    cout << "Banker thang: " << (banker * 100.0 / totalGames) << "%" << endl;
-    cout << "Hoa (Tie):    " << (tie * 100.0 / totalGames) << "%" << endl;
+    cout << fixed << setprecision(4);
+    cout << "\nTONG KET TAN SUAT KET QUA" << endl;
+    cout << "Tong so van: " << soVan << endl;
+    cout << "Player thang: " << playerThang * 100.0 / soVan << "%" << endl;
+    cout << "Banker thang: " << bankerThang * 100.0 / soVan << "%" << endl;
+    cout << "Hoa Tie:      " << hoa * 100.0 / soVan << "%" << endl;
+
+    ChienThuatCoDinh luonBanker(CUOC_BANKER, "Luon dat Banker");
+    ChienThuatCoDinh luonPlayer(CUOC_PLAYER, "Luon dat Player");
+    ChienThuatCoDinh luonTie(CUOC_TIE, "Luon dat Tie");
+    SoiCauBet cauBet(3);
+    SoiCau11 cau11;
+    SoiCau12_13 cau12;
+    SoiCauNghieng cauNghieng(12, 3);
+    TongHopSoiCau tongHop;
+
+    vector<ChienThuat*> dsChienThuat;
+    dsChienThuat.push_back(&luonBanker);
+    dsChienThuat.push_back(&luonPlayer);
+    dsChienThuat.push_back(&luonTie);
+    dsChienThuat.push_back(&cauBet);
+    dsChienThuat.push_back(&cau11);
+    dsChienThuat.push_back(&cau12);
+    dsChienThuat.push_back(&cauNghieng);
+    dsChienThuat.push_back(&tongHop);
+
+    cout << "\nCHIEN THUAT CHOI, " << DON_VI_CUOC << " don vi/van" << endl;
+    cout << left << setw(22) << "Chien thuat"
+         << right << setw(12) << "So cuoc"
+         << setw(14) << "Loi/Lo"
+         << setw(14) << "EV/cuoc"
+         << setw(16) << "MaxDrawdown" << endl;
+
+    for (int i = 0; i < (int)dsChienThuat.size(); i++) {
+        KetQuaChienThuat kq = danhGiaChienThuat(*dsChienThuat[i], danhSachKetQua, DON_VI_CUOC);
+        cout << left << setw(22) << kq.ten
+             << right << setw(12) << kq.soCuoc
+             << setw(14) << kq.loiLo
+             << setw(14) << kq.evMoiCuoc
+             << setw(16) << kq.maxDrawdown << endl;
+    }
+
+    cout << "\nGIAI THICH NHANH" << endl;
+    cout << "EV/cuoc: loi hoac lo trung binh tren moi 1 don vi tien cuoc." << endl;
+    cout << "MaxDrawdown: muc tut von lon nhat tu dinh xuong day trong qua trinh choi." << endl;
+    cout << "Neu EV am, ve dai han nguoi choi dang bat loi va chu co loi the." << endl;
 
     return 0;
 }
