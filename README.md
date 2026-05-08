@@ -1,4 +1,4 @@
-# Mô phỏng Baccarat 
+# Mô phỏng Baccarat (Nhóm 6)
 
 ## Giới thiệu
 
